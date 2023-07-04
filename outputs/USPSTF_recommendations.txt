@@ -1,0 +1,32 @@
+------------ COMPARISON WITH USPSTF ON PLCO------------ 
+ 
+Pre-processed PLCO size: 55161
+Pre-processed PLCO with lung cancer: 2752
+Patients from PLCO who fit into US recommendation: 22609
+Patients from PLCO who fit into US recommendation with lung cancer: 2105
+
+------- USPSTF RECOMMENDATION ON PLCO -------- 
+TP : 2105
+FN : 647
+TN : 31905
+FP : 20504
+Precision : 0.093
+Recall : 0.765
+
+
+------------ COMPARISON WITH USPSTF ON NLST------------ 
+ 
+Pre-processed NLST size: 48595
+Pre-processed NLST with lung cancer: 1511
+Patients from NLST who fit into US recommendation: 48034
+Patients from NLST who fit into US recommendation with lung cancer: 1495
+
+------- USPSTF RECOMMENDATION ON NLST -------- 
+TP : 1495
+FN : 16
+TN : 545
+FP : 46539
+Precision : 0.031
+Recall : 0.989
+
+
