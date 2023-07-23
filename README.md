@@ -1,11 +1,10 @@
 # LungCancerRisk
 
-Pierre-Louis Benveniste $^{1*}$, Julie Alberge $^{2*}$, Lei Xing $^3$, Jean-Emmanuel Bibault $^4$
+Pierre-Louis Benveniste $^{1*}$, Julie Alberge $^{2*}$, Jean-Emmanuel Bibault $^3$
 
 - 1 - Ecole Normale Supérieure de Paris Saclay
 - 2 - École nationale des ponts et chaussées
-- 3 - Laboratory for Artificial Intelligence in Medicine, Stanford University
-- 4 - Radiation Oncology Department, Hôpital Européen Georges Pompidou, AP-HP, Université Paris Cité
+- 3 - Radiation Oncology Department, Hôpital Européen Georges Pompidou, AP-HP, Université Paris Cité
 
 *contributed equally
 
