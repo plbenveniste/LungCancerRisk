@@ -11,6 +11,8 @@ Returns:
 
 Example:
     python data_preprocessing.py --nlst-path data/NLST.csv --plco-path data/PLCO.csv --output-path data/preprocessed_data.csv
+
+Pierre-Louis Benveniste
 """
 import argparse
 import pandas as pd
