@@ -18,6 +18,7 @@ Pierre-Louis Benveniste
 import argparse
 import pandas as pd
 import math
+from sklearn.metrics import precision_recall_curve
 
 
 def get_parser():
@@ -31,8 +32,8 @@ def get_parser():
         None
     """
     parser = argparse.ArgumentParser(description='Compute Performance of PLCOM2012')
-    parser.add_argument('--nlst-path', type=str, help='Path to the preprocessed NLST data')
-    parser.add_argument('--plco-path', type=str, help='Path to the preprocessed PLCO data')
+    parser.add_argument('--nlst-path', type=str, help='Path to the preprocessed NLST data', required=True)
+    parser.add_argument('--plco-path', type=str, help='Path to the preprocessed PLCO data', required=True)
     return parser
 
 
@@ -60,27 +61,27 @@ def model_plcom2012(age, race, education, bmi, copd, cancer_hist, family_hist_lu
     """
     if race in ["white", "american indian", "alaskan native", 1]:
         model = 0.0778868 * (age - 62) - 0.0812744 * (education - 4) - 0.0274194 * (bmi - 27) + 0.3553063 * copd + 0.4589971 * cancer_hist + \
-        0.587185 * family_hist_lung_cancer + 0.2597431 * smoking_status - 1.822606 * ((smoking_intensity/10)^(-1) - 0.4021541613) + 0.0317321 * \
+        0.587185 * family_hist_lung_cancer + 0.2597431 * smoking_status - 1.822606 * ((smoking_intensity/10)**(-1) - 0.4021541613) + 0.0317321 * \
         (duration_smoking - 27) - 0.0308572 * (smoking_quit_time - 10) - 4.532506
 
     if race in ["black", 2]:
         model = 0.0778868 * (age - 62) - 0.0812744 * (education - 4) - 0.0274194 * (bmi - 27) + 0.3553063 * copd + 0.4589971 * cancer_hist + \
-        0.587185 * family_hist_lung_cancer + 0.2597431 * smoking_status - 1.822606 * ((smoking_intensity/10)^(-1) - 0.4021541613) + 0.0317321 * \
+        0.587185 * family_hist_lung_cancer + 0.2597431 * smoking_status - 1.822606 * ((smoking_intensity/10)**(-1) - 0.4021541613) + 0.0317321 * \
         (duration_smoking - 27) - 0.0308572 * (smoking_quit_time - 10) - 4.532506 + 0.3944778
 
     if race in ["hispanic", 3]:
-        model <- 0.0778868 * (age - 62) - 0.0812744 * (education - 4) - 0.0274194 * (bmi - 27) + 0.3553063 * copd + 0.4589971 * cancer_hist + \
-        0.587185 * family_hist_lung_cancer + 0.2597431 * smoking_status - 1.822606 * ((smoking_intensity/10)^(-1) - 0.4021541613) + 0.0317321 * \
+        model = 0.0778868 * (age - 62) - 0.0812744 * (education - 4) - 0.0274194 * (bmi - 27) + 0.3553063 * copd + 0.4589971 * cancer_hist + \
+        0.587185 * family_hist_lung_cancer + 0.2597431 * smoking_status - 1.822606 * ((smoking_intensity/10)**(-1) - 0.4021541613) + 0.0317321 * \
         (duration_smoking - 27) - 0.0308572 * (smoking_quit_time - 10) - 4.532506 - 0.7434744
 
     if race in ["asian", 4]:
-        model <- 0.0778868 * (age - 62) - 0.0812744 * (education - 4) - 0.0274194 * (bmi - 27) + 0.3553063 * copd + 0.4589971 * cancer_hist + \
-        0.587185 * family_hist_lung_cancer + 0.2597431 * smoking_status - 1.822606 * ((smoking_intensity/10)^(-1) - 0.4021541613) + 0.0317321 * \
+        model = 0.0778868 * (age - 62) - 0.0812744 * (education - 4) - 0.0274194 * (bmi - 27) + 0.3553063 * copd + 0.4589971 * cancer_hist + \
+        0.587185 * family_hist_lung_cancer + 0.2597431 * smoking_status - 1.822606 * ((smoking_intensity/10)**(-1) - 0.4021541613) + 0.0317321 * \
         (duration_smoking - 27) - 0.0308572 * (smoking_quit_time - 10) - 4.532506 - 0.466585
 
     if race in ["native hawaiian", "pacific islander", 5]:
-        model <- 0.0778868 * (age - 62) - 0.0812744 * (education - 4) - 0.0274194 * (bmi - 27) + 0.3553063 * copd + 0.4589971 * cancer_hist + \
-        0.587185 * family_hist_lung_cancer + 0.2597431 * smoking_status - 1.822606 * ((smoking_intensity/10)^(-1) - 0.4021541613) + 0.0317321 * \
+        model = 0.0778868 * (age - 62) - 0.0812744 * (education - 4) - 0.0274194 * (bmi - 27) + 0.3553063 * copd + 0.4589971 * cancer_hist + \
+        0.587185 * family_hist_lung_cancer + 0.2597431 * smoking_status - 1.822606 * ((smoking_intensity/10)**(-1) - 0.4021541613) + 0.0317321 * \
         (duration_smoking - 27) - 0.0308572 * (smoking_quit_time - 10) - 4.532506 + 1.027152
 
     prob = math.exp(model) / (1 + math.exp(model))
@@ -105,15 +106,13 @@ def main():
     nlst_path = args.nlst_path
     plco_path = args.plco_path
 
-    # Loading of both datasets
+    ###################### COMPARISON ON PLCO ######################
     plco = pd.read_csv(plco_path)
-    nlst = pd.read_csv(nlst_path)
 
-    # We first uniformise both dataset
-    # Uniformisation of both datasets
-    plco = plco[["age", "race7", "educat", "weight_f", "height_f", "d_seer_death", "ph_first_cancer"
-                 "sex", "height_f", "weight_f", "race7", "ssmokea_f", "cig_stat", "cigar", "pipe", "pack_years", "smokea_f", "cigpd_f","cig_years", "bronchit_f",
-                    "diabetes_f", "emphys_f", "hearta_f", "hyperten_f", "stroke_f", "lung_fh", "d_seer_death", "lung_cancer",]]
+    # Uniformisation of PLCO
+    plco = plco[["age", "race7", "educat", "weight_f", "height_f", "d_seer_death", "ph_first_cancer",  "lung_fh", "cig_stat",
+                  "cigpd_f", "cig_years", "cig_stop", "plco_id", "lung_cancer"]]
+
     # For race : 
     plco["race7"] = plco["race7"].replace([6],[5])
     # Remove participant who have race=7
@@ -129,16 +128,167 @@ def main():
     plco.loc[:, 'bmi'] = plco['bmi'].round(0)
     # Remove participant who have no bmi
     plco = plco.loc[plco['bmi'].notnull()]
+    # Remove weight_f and height_f columns
+    plco = plco.drop(columns=['weight_f', 'height_f'])
 
     # For copd: create a column with binary values : 1 if d_seer_death==50130 and 0 otherwise
     plco['copd'] = 1 * (plco['d_seer_death'] == 50130)
     # Remove participant who have no copd
     plco = plco.loc[plco['copd'].notnull()]
+    # Remove d_seer_death column
+    plco = plco.drop(columns=['d_seer_death'])
 
     # For cancer_hist: create a column with binary values : 1 if ph_first_cancer is a number and 0 otherwise
     plco['cancer_hist'] = 1 * (plco['ph_first_cancer'].notnull())
     # Remove participant who have no cancer_hist
     plco = plco.loc[plco['cancer_hist'].notnull()]
+    # Remove ph_first_cancer column
+    plco = plco.drop(columns=['ph_first_cancer'])
 
-    # For family_hist_lung_cancer: remove participant who have value 9 or not a number
+    # For family_hist_lung_cancer: remove participant who have value 9 or not a number (ie convert 9 to nan and then remove non number)
+    plco['lung_fh'] = plco['lung_fh'].replace([9], None)
+    plco = plco.loc[plco['lung_fh'].notnull()]
+
+    # For smoking_status: create a column with binary values : 1 if cig_stat==1 and 0 otherwise. Then remove participant who have no smoking status
+    plco['smoking_status'] = 1 * (plco['cig_stat'] == 1)
+    plco = plco.loc[plco['smoking_status'].notnull()]
+    # Remove cig_stat column
+    plco = plco.drop(columns=['cig_stat'])
+
+    # For smoking_intensity: create a column with the number of cigarettes smoked per day. Then remove participant who have no smoking intensity
+    plco['smoking_intensity'] = plco['cigpd_f'].replace([1,2,3,4,5,6,7], [5,15,25,35,50,70,90])
+    plco = plco.loc[plco['smoking_intensity'].notnull()]
+    # Remove cigpd_f column
+    plco = plco.drop(columns=['cigpd_f'])
+
+    # For duration_smoking: create a column with the duration of smoking. Then remove participant who have no duration of smoking
+    plco['duration_smoking'] = plco['cig_years']
+    plco = plco.loc[plco['duration_smoking'].notnull()]
+    # Remove cig_years column
+    plco = plco.drop(columns=['cig_years'])
+
+    # For smoking_quit_time: create a column with the smoking quit time. Then remove participant who have no smoking quit time
+    plco['smoking_quit_time'] = plco['cig_stop']
+    plco = plco.loc[plco['smoking_quit_time'].notnull()]
+    # Remove cig_stop column
+    plco = plco.drop(columns=['cig_stop'])
+
+    # Compute the risk of lung cancer for each participant
+    # Create an empty column to store the risk of lung cancer for each participant
+    plco["risk"] = 0
+
+    # Iterate over all the participants
+    for index, row in plco.iterrows():
+        plco.loc[index, "risk"] = model_plcom2012(row["age"], row["race7"], row["educat"], row["bmi"], row["copd"], row["cancer_hist"],
+                                                   row["lung_fh"], row["smoking_status"], row["smoking_intensity"], row["duration_smoking"],
+                                                   row["smoking_quit_time"])
+
+    # Compute the performance of the model
+    precision, recall, thresholds = precision_recall_curve(plco['lung_cancer'], plco['risk'])
+    recall_value_plco = 0.765
+    df = pd.concat([pd.DataFrame(precision, columns=['precision']), 
+            pd.DataFrame(recall,columns=['recall']), 
+            pd.DataFrame(thresholds,columns=['thresholds'])], axis=1)
+    max_precision_plco = df.loc[df['recall'] >= recall_value_plco].precision.max() 
+    print("On PLCO : For recall = " + str(round(recall_value_plco,3))  + " precision is : " + str(round(max_precision_plco,3)))
+
+    ###################### COMPARISON ON NLST ######################
+    nlst = pd.read_csv(nlst_path, low_memory=False)
+
+    # Uniformisation of PLCO
+    nlst = nlst[["race", "educat", "height",  "weight", "diagcopd", "num_confirmed", "famfather","fammother", "famchild", "famsister",
+                    "fambrother", "cigsmok", "smokeday", "smokeyr", "age_quit","age", "can_scr"]]
+
+    # For race : 4 becomes 1, 3 becomes 4, 6 and above is removed
+    # first remove subject which have race=6 or above
+    nlst = nlst[nlst["race"]<6]
+    nlst["race"] = nlst["race"].replace([4,3],[1,4])
+    # remove participant who have no race
+    nlst = nlst.loc[nlst['race'].notnull()]
+
+    # For education : 2 becomes 1, 3 becomes 2, 4 becomes 3, 5 becomes 4, 6 becomes 5, 7 becomes 6 and 8 or more is removed
+    nlst = nlst[nlst['educat'] < 8]
+    nlst["educat"] = nlst["educat"].replace([2,3,4,5,6,7],[1,2,3,4,5,6])
+    # Remove participant who have no education
+    nlst = nlst.loc[nlst['educat'].notnull()]
+
+    # For bmi : round it to the nearest integer
+    nlst.loc[:, 'bmi'] = nlst['weight'] / nlst['height']**2 * 703
+    nlst.loc[:, 'bmi'] = nlst['bmi'].round(0)
+    # Remove participant who have no bmi
+    nlst = nlst.loc[nlst['bmi'].notnull()]
+    # Remove weight and height columns
+    nlst = nlst.drop(columns=['weight', 'height'])
+
+    # For copd: create a column with binary values : 1 if diagcopd==1 and 0 otherwise
+    nlst['copd'] = 1 * (nlst['diagcopd'] == 1)
+    # Remove participant who have no copd
+    nlst = nlst.loc[nlst['copd'].notnull()]
+    # Remove diagcopd column
+    nlst = nlst.drop(columns=['diagcopd'])
+
+    # For cancer_hist: create a column with binary values : 1 if num_confirmed>0 and 0 otherwise
+    nlst['cancer_hist'] = 1 * (nlst['num_confirmed'] > 0)
+    # Remove participant who have no cancer_hist
+    nlst = nlst.loc[nlst['cancer_hist'].notnull()]
+    # Remove num_confirmed column
+    nlst = nlst.drop(columns=['num_confirmed'])
+
+    # For family_hist_lung_cancer: binary value : 1 if at least one of the famfather, fammother, famchild, famsister, fambrother is 1
+    nlst["lung_fh"] = nlst[["famfather","fammother", "famchild", "famsister", "fambrother"]].max(axis=1)
+    # Remove participant who have no family_hist_lung_cancer
+    nlst = nlst.loc[nlst['lung_fh'].notnull()]
+
+    # For smoking_status: create a column with binary values : 1 if cigsmok==1 and 0 otherwise
+    nlst['smoking_status'] = 1 * (nlst['cigsmok'] == 1)
+    # Remove participant who have no smoking status
+    nlst = nlst.loc[nlst['smoking_status'].notnull()]
+    # Remove cigsmok column
+    nlst = nlst.drop(columns=['cigsmok'])
+
+    # For smoking_intensity: create a column with the number of cigarettes smoked per day. Then remove participant who have no smoking intensity
+    nlst['smoking_intensity'] = nlst['smokeday']
+    nlst = nlst.loc[nlst['smoking_intensity'].notnull()]
+    # Remove smokeday column
+    nlst = nlst.drop(columns=['smokeday'])
+
+    # For duration_smoking: create a column with the duration of smoking. Then remove participant who have no duration of smoking
+    nlst['duration_smoking'] = nlst['smokeyr']
+    nlst = nlst.loc[nlst['duration_smoking'].notnull()]
+    # Remove smokeyr column
+    nlst = nlst.drop(columns=['smokeyr'])
+
+    # For smoking_quit_time: create a column with the years since the person has quit smoking = age - age_quit or 0 if age_quit is Null
+    nlst['smoking_quit_time'] = nlst['age'] - nlst['age_quit']
+    nlst.loc[nlst['age_quit'].isnull(), 'smoking_quit_time'] = 0
+    # Remove column age_quit
+    nlst = nlst.drop(columns=['age_quit'])
+
+    # For cancer screening : 1 if can_scr>0 and 0 otherwise
+    nlst["can_scr"] = 1 * (nlst["can_scr"] > 0)
+
+    # Compute the risk of lung cancer for each participant
+    # Create an empty column to store the risk of lung cancer for each participant
+    nlst["risk"] = 0
+
+    # Iterate over all the participants
+    for index, row in nlst.iterrows():
+        nlst.loc[index, "risk"] = model_plcom2012(row["age"],row["race"], row["educat"], row["bmi"], row["copd"], row["cancer_hist"],
+                                                   row["lung_fh"], row["smoking_status"], row["smoking_intensity"], row["duration_smoking"],
+                                                   row["smoking_quit_time"])
+        
+    # Compute the performance of the model
+    precision, recall, thresholds = precision_recall_curve(nlst['can_scr'], nlst['risk'])
+    recall_value_nlst = 0.989
+    df = pd.concat([pd.DataFrame(precision, columns=['precision']), 
+            pd.DataFrame(recall,columns=['recall']), 
+            pd.DataFrame(thresholds,columns=['thresholds'])], axis=1)
+    max_precision_nlst = df.loc[df['recall'] >= recall_value_nlst].precision.max() 
+    print("On PLCO : For recall = " + str(round(recall_value_nlst,3))  + " precision is : " + str(round(max_precision_nlst,3)))
+        
     
+    return None
+
+
+if __name__ == "__main__":
+    main()
