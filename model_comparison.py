@@ -27,6 +27,8 @@ from skopt import BayesSearchCV
 from xgboost import XGBClassifier
 from sklearn.metrics import roc_auc_score, auc, brier_score_loss, precision_recall_curve, accuracy_score, roc_curve
 import matplotlib.pyplot as plt
+from sklearn.calibration import calibration_curve
+import pickle
 
 
 
@@ -101,7 +103,7 @@ def train_model(x_train, x_val, y_train, y_val, output_path, features):
     # Save the best model
     
     lgb_model = bayes_search_lgb.best_estimator_
-    lgb_model.booster_.save_model(output_path + '/lgb_model' + features + '.txt')
+    pickle.dump(lgb_model, open(output_path + '/lgb_model' + features + '.pkl', 'wb'))
 
     #------------------------ Train the XGB model ------------------------
     # Initialize the XGBClassifier fixed parameters
@@ -132,7 +134,8 @@ def train_model(x_train, x_val, y_train, y_val, output_path, features):
 
     # Save the best model
     xgb_model = bayes_search_xgb.best_estimator_
-    xgb_model.save_model(output_path + '/xgb_model' + features + '.txt')
+    pickle.dump(lgb_model, open(output_path + '/xgb_model' + features + '.pkl', 'wb'))
+
 
     return lgb_model, xgb_model
 
@@ -264,7 +267,7 @@ def main():
     brier_score_lgb = brier_score_loss(y_test, y_pred_proba_lgb)
     pr_auc_lgb = auc(recall_lgb, precision_lgb)
 
-    print("SCORES FOR LGB MODEL ON ALL FEATURES")
+    print(" ------------- SCORES FOR LGB MODEL ON ALL FEATURES ------------- ")
     print("ROC AUC Score: ", roc_auc_lgb)
     print("Accuracy Score: ", accuracy_lgb)
     print("Brier score ", brier_score_lgb )
@@ -281,7 +284,7 @@ def main():
     brier_score_xgb = brier_score_loss(y_test, y_pred_proba_xgb)
     pr_auc_xgb = auc(recall_xgb, precision_xgb)
 
-    print("SCORES FOR XGB MODEL ON ALL FEATURES")
+    print(" ------------- SCORES FOR XGB MODEL ON ALL FEATURES ------------- ")
     print("ROC AUC Score: ", roc_auc_xgb)
     print("Accuracy Score: ", accuracy_xgb)
     print("Brier score ", brier_score_xgb)
@@ -351,8 +354,8 @@ def main():
     print("AUC-PR score  ", pr_auc_xgb)
 
     # We extract the precision for a fixed recall on the plco dataset
-    y_pred_proba_lgb = xgb_final.predict_proba(x_plco)[:, 1]
-    precision, recall, thresholds = precision_recall_curve(y_plco, y_pred_proba_lgb)
+    y_pred_proba_xgb = xgb_final.predict_proba(x_plco)[:, 1]
+    precision, recall, thresholds = precision_recall_curve(y_plco, y_pred_proba_xgb)
     recall_value_plco = 0.765
     df = pd.concat([pd.DataFrame(precision, columns=['precision']), 
             pd.DataFrame(recall,columns=['recall']), 
@@ -360,8 +363,8 @@ def main():
     max_precision_plco = df.loc[df['recall'] >= recall_value_plco].precision.max() 
     print("On PLCO : For recall = " + str(round(recall_value_plco,3))  + " precision is : " + str(round(max_precision_plco,3)))
     
-    y_pred_proba_lgb = xgb_final.predict_proba(x_nlst)[:, 1]
-    precision, recall, thresholds = precision_recall_curve(y_nlst, y_pred_proba_lgb)
+    y_pred_proba_xgb = xgb_final.predict_proba(x_nlst)[:, 1]
+    precision, recall, thresholds = precision_recall_curve(y_nlst, y_pred_proba_xgb)
     recall_value_nlst = 0.989
     df = pd.concat([pd.DataFrame(precision, columns=['precision']), 
             pd.DataFrame(recall,columns=['recall']), 
@@ -372,10 +375,10 @@ def main():
     # Plot the precision-recall curve
     # We first plot the curve for the LGB model
     plt.figure()
-    plt.plot(recall_lgb_final, precision_lgb_final, label='LGB on final features')
-    plt.plot(recall, precision, label='XGB on final features')
+    plt.plot(1-precision_lgb_final, recall_lgb_final, label='LGB on final features')
+    plt.plot(1-precision, recall, label='XGB on final features')
     plt.xlabel('Recall')
-    plt.ylabel('Precision')
+    plt.ylabel('1-Precision')
     plt.title('Precision-Recall curve')
     plt.legend()
     plt.show()
@@ -387,6 +390,26 @@ def main():
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
     plt.title('ROC-AUC curve')
+    plt.legend()
+    plt.show()
+
+    # We then look at the calibration curve
+    y_pred_proba_xgb = xgb_final.predict_proba(x_plco)[:, 1]
+    y_pred_proba_lgb = lgb_final.predict_proba(x_plco)[:, 1]
+    y_pred_proba_nlst_xgb = xgb_final.predict_proba(x_nlst)[:, 1]
+    y_pred_proba_nlst_lgb = lgb_final.predict_proba(x_nlst)[:, 1]
+    fop_train_xgb, mpv_train_xgb = calibration_curve(y_plco, y_pred_proba_xgb, n_bins=10, normalize=True)
+    fop_train_lgb, mpv_train_lgb = calibration_curve(y_plco, y_pred_proba_lgb, n_bins=10, normalize=True)
+    fop_test_xgb, mpv_test_xgb = calibration_curve(y_nlst, y_pred_proba_nlst_xgb, n_bins=10, normalize=True)
+    fop_test_lgb, mpv_test_lgb = calibration_curve(y_nlst, y_pred_proba_nlst_lgb, n_bins=10, normalize=True)
+    # plot perfectly calibrated
+    plt.plot([0, 1], [0, 1], linestyle='--')
+    # plot model reliability
+    plt.plot(mpv_train_xgb, fop_train_xgb, marker='.', label='XGB on PLCO')
+    plt.plot(mpv_train_lgb, fop_train_lgb, marker='.', label='LGB on PLCO')
+    plt.plot(mpv_test_xgb, fop_test_xgb, marker='.', label='XGB on NLST')
+    plt.plot(mpv_test_lgb, fop_test_lgb, marker='.', label='LGB on NLST')
+    plt.title("Calibration curve on train and validation set")
     plt.legend()
     plt.show()    
 
