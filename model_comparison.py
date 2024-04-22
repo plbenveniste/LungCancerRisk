@@ -240,12 +240,12 @@ def main():
         lgb_final.fit(x_train, y_train)
 
         # Now for the XGB model
-        colsample_bytree = 0.5215579121066478
-        learning_rate = 0.9674062745251472
-        max_depth = 3
-        n_estimators = 619
-        reg_alpha = 35.683424042437835
-        subsample = 0.2798727981229301
+        colsample_bytree = 0.1
+        learning_rate = 0.5863211621281676
+        max_depth = 2
+        n_estimators = 50
+        reg_alpha = 14.90209053473733
+        subsample = 1.0
         xgb_final = XGBClassifier(colsample_bytree=colsample_bytree, learning_rate=learning_rate, max_depth=max_depth, n_estimators=n_estimators,
                                 reg_alpha=reg_alpha, subsample=subsample, objective='binary:logistic', eval_metric='aucpr', tree_method='exact', random_state=0)
 
