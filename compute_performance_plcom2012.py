@@ -5,12 +5,13 @@ To compute the performance, we will use the following script: https://github.com
 Args:
     --nlst-path: Path to the preprocessed NLST data
     --plco-path: Path to the preprocessed PLCO data
+    --model-path: Path to the XGB model
 
 Returns:
     None
 
 Example:
-    python compute_performance_plcom2012.py --nlst-path data/NLST.csv --plco-path data/PLCO.csv
+    python compute_performance_plcom2012.py --nlst-path data/NLST.csv --plco-path data/PLCO.csv --model-path
 
 Pierre-Louis Benveniste
 """
@@ -19,6 +20,7 @@ import argparse
 import pandas as pd
 import math
 from sklearn.metrics import precision_recall_curve
+import pickle
 
 
 def get_parser():
@@ -34,6 +36,7 @@ def get_parser():
     parser = argparse.ArgumentParser(description='Compute Performance of PLCOM2012')
     parser.add_argument('--nlst-path', type=str, help='Path to the preprocessed NLST data', required=True)
     parser.add_argument('--plco-path', type=str, help='Path to the preprocessed PLCO data', required=True)
+    parser.add_argument('--model-path', type=str, help='Path to the XGB model', required=True)
     return parser
 
 
@@ -105,9 +108,13 @@ def main():
     args = parser.parse_args()
     nlst_path = args.nlst_path
     plco_path = args.plco_path
+    xgb_path = args.model_path
 
     ###################### COMPARISON ON PLCO ######################
     plco = pd.read_csv(plco_path)
+
+    # Designed for patients who have smoked or are current smokers
+    plco = plco.loc[plco.cig_stat > 0]
 
     # Uniformisation of PLCO
     plco = plco[["age", "race7", "educat", "weight_f", "height_f", "d_seer_death", "ph_first_cancer",  "lung_fh", "cig_stat",
@@ -176,6 +183,7 @@ def main():
     # Compute the risk of lung cancer for each participant
     # Create an empty column to store the risk of lung cancer for each participant
     plco["risk"] = 0
+    print(len(plco))
 
     # Iterate over all the participants
     for index, row in plco.iterrows():
@@ -192,12 +200,12 @@ def main():
     max_precision_plco = df.loc[df['recall'] >= recall_value_plco].precision.max() 
     print("On PLCO : For recall = " + str(round(recall_value_plco,3))  + " precision is : " + str(round(max_precision_plco,3)))
 
+    ################################################################
     ###################### COMPARISON ON NLST ######################
+    ################################################################
     nlst = pd.read_csv(nlst_path, low_memory=False)
-
-    # Uniformisation of PLCO
     nlst = nlst[["race", "educat", "height",  "weight", "diagcopd", "num_confirmed", "famfather","fammother", "famchild", "famsister",
-                    "fambrother", "cigsmok", "smokeday", "smokeyr", "age_quit","age", "can_scr"]]
+                    "fambrother", "cigsmok", "smokeday", "smokeyr", "age_quit","age", "can_scr", "pid"]]
 
     # For race : 4 becomes 1, 3 becomes 4, 6 and above is removed
     # first remove subject which have race=6 or above
@@ -285,7 +293,95 @@ def main():
             pd.DataFrame(thresholds,columns=['thresholds'])], axis=1)
     max_precision_nlst = df.loc[df['recall'] >= recall_value_nlst].precision.max() 
     print("On PLCO : For recall = " + str(round(recall_value_nlst,3))  + " precision is : " + str(round(max_precision_nlst,3)))
-        
+
+    #######################################################################
+    ###################### COMPARISON WITH XGB MODEL ######################
+    #######################################################################
+
+    # We preprocess the data to have the same columns as the XGB model
+    plco_xgb = pd.read_csv(plco_path)
+    plco_xgb = plco_xgb[["age", "sex", "height_f", "weight_f", "race7", "ssmokea_f", "cig_stat", "cigar", "pipe", "pack_years", "smokea_f", "cigpd_f","cig_years", "bronchit_f",
+                    "diabetes_f", "emphys_f", "hearta_f", "hyperten_f", "stroke_f", "lung_fh","lung_cancer", "plco_id"]]
+    plco_xgb["race7"] = plco_xgb["race7"].replace(3,1)
+    plco_xgb["lung_fh"] = plco_xgb["lung_fh"].replace(9,0)
+    plco_xgb.loc[:, 'bmi'] = plco_xgb['weight_f'] / plco_xgb['height_f']**2 * 703
+    # We keep only the subject in the plco_xgb dataset that are in the plco dataset
+    plco_xgb = plco_xgb.loc[plco_xgb['plco_id'].isin(plco['plco_id'])]
+    print(len(plco_xgb))
+    # We keep only the final features
+    columns_to_keep = ['age', 'ssmokea_f', 'cig_stat', 'pack_years', 'smokea_f', 
+                        'cig_years', 'lung_fh', 'bmi', 'lung_cancer']
+    plco_xgb = plco_xgb[columns_to_keep]
+
+    # Load the XGB model
+    with open(xgb_path, 'rb') as f:
+        xgb_model = pickle.load(f)
+
+    # Compute the risk of lung cancer for each participant
+    plco_xgb["risk"] = xgb_model.predict_proba(plco_xgb.drop(columns=['lung_cancer']))[:,1]
+
+    # Compute the performance of the model
+    precision, recall, thresholds = precision_recall_curve(plco_xgb['lung_cancer'], plco_xgb['risk'])
+    recall_value_plco = 0.765
+    df = pd.concat([pd.DataFrame(precision, columns=['precision']), 
+            pd.DataFrame(recall,columns=['recall']), 
+            pd.DataFrame(thresholds,columns=['thresholds'])], axis=1)
+    max_precision_plco = df.loc[df['recall'] >= recall_value_plco].precision.max() 
+    print("On PLCO with XGB : For recall = " + str(round(recall_value_plco,3))  + " precision is : " + str(round(max_precision_plco,3)))
+
+    # Now we do the same for the NLST dataset
+    nlst_xgb = pd.read_csv(nlst_path, low_memory=False)
+    nlst_xgb = nlst_xgb[["age", "gender", "height",  "weight", "race", "age_quit", "cigsmok", "cigar", "pipe", "pkyr", "smokeage", "smokeday", "smokeyr", "agechro", "diagdiab",
+            "diagemph", "diaghear", "diaghype", "diagstro","pid", "famfather","fammother", "famchild", "famsister", "fambrother", "can_scr"]]
+    nlst_xgb["lung_fh"] = nlst_xgb[["famfather","fammother", "famchild", "famsister", "fambrother"]].max(axis=1)
+    nlst_xgb["can_scr"] = 1 * (nlst_xgb["can_scr"] > 0)
+    nlst_xgb["race"] = nlst_xgb["race"].replace([3,4,6,95,96,98,99],[4,6,7,7,7,7,7])
+    nlst_xgb['cigsmok'] = nlst_xgb["cigsmok"].replace(0,2)
+    nlst_xgb['bmi'] = nlst_xgb['weight'] / nlst_xgb['height']**2 * 703
+    # We keep only the subject in the nlst_xgb dataset that are in the nlst dataset
+    nlst_xgb = nlst_xgb.loc[nlst_xgb['pid'].isin(nlst['pid'])]
+    # Rename the columns to have the same name as PLCO
+    change_columns = {
+            "age": "age",
+            "gender": "sex", 
+            "height": "height_f",
+            "weight": "weight_f",
+            "race": "race7",
+            "age_quit": "ssmokea_f",
+            "cigsmok": "cig_stat",
+            "cigar": "cigar",
+            "pipe": "pipe",
+            "pkyr": "pack_years",
+            "smokeage": "smokea_f",
+            "smokeday": "cigpd_f",
+            "smokeyr": "cig_years",
+            "agechro": "bronchit_f",
+            "diagdiab": "diabetes_f",
+            "diagemph": "emphys_f",
+            "diaghear": "hearta_f",
+            "diaghype": "hyperten_f",
+            "diagstro": "stroke_f",
+            "can_scr": "lung_cancer",
+            "lung_fh": "lung_fh"
+    }
+    nlst_xgb = nlst_xgb.rename(columns=change_columns)
+
+    # We keep only the final features
+    columns_to_keep = ['age', 'ssmokea_f', 'cig_stat', 'pack_years', 'smokea_f', 
+                        'cig_years', 'lung_fh', 'bmi', 'lung_cancer']
+    nlst_xgb = nlst_xgb[columns_to_keep]
+
+    # Compute the risk of lung cancer for each participant
+    nlst_xgb["risk"] = xgb_model.predict_proba(nlst_xgb.drop(columns=['lung_cancer']))[:,1]
+
+    # Compute the performance of the model
+    precision, recall, thresholds = precision_recall_curve(nlst_xgb['lung_cancer'], nlst_xgb['risk'])
+    recall_value_nlst = 0.989
+    df = pd.concat([pd.DataFrame(precision, columns=['precision']), 
+            pd.DataFrame(recall,columns=['recall']), 
+            pd.DataFrame(thresholds,columns=['thresholds'])], axis=1)
+    max_precision_nlst = df.loc[df['recall'] >= recall_value_nlst].precision.max()
+    print("On NLST with XGB : For recall = " + str(round(recall_value_nlst,3))  + " precision is : " + str(round(max_precision_nlst,3)))
     
     return None
 
