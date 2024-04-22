@@ -26,6 +26,8 @@ from lightgbm import LGBMClassifier
 from skopt import BayesSearchCV
 from xgboost import XGBClassifier
 from sklearn.metrics import roc_auc_score, auc, brier_score_loss, precision_recall_curve, accuracy_score
+import matplotlib.pyplot as plt
+
 
 
 def get_parser():
@@ -303,7 +305,7 @@ def main():
     brier_score_lgb = brier_score_loss(y_test, y_pred_proba_lgb)
     pr_auc_lgb = auc(recall_lgb, precision_lgb)
 
-    print("SCORES FOR LGB MODEL ON FINAL FEATURES")
+    print(" ------------- SCORES FOR LGB MODEL ON FINAL FEATURES -------------")
     print("ROC AUC Score: ", roc_auc_lgb)
     print("Accuracy Score: ", accuracy_lgb)
     print("Brier score ", brier_score_lgb )
@@ -320,10 +322,10 @@ def main():
     print("On PLCO : For recall = " + str(round(recall_value_plco,3))  + " precision is : " + str(round(max_precision_plco,3)))
     
     y_pred_proba_lgb = lgb_final.predict_proba(x_nlst)[:, 1]
-    precision, recall, thresholds = precision_recall_curve(y_nlst, y_pred_proba_lgb)
+    precision_lgb_final, recall_lgb_final, thresholds = precision_recall_curve(y_nlst, y_pred_proba_lgb)
     recall_value_nlst = 0.989
-    df = pd.concat([pd.DataFrame(precision, columns=['precision']), 
-            pd.DataFrame(recall,columns=['recall']), 
+    df = pd.concat([pd.DataFrame(precision_lgb_final, columns=['precision']), 
+            pd.DataFrame(recall_lgb_final,columns=['recall']), 
             pd.DataFrame(thresholds,columns=['thresholds'])], axis=1)
     max_precision_nlst = df.loc[df['recall'] >= recall_value_nlst].precision.max() 
     print("On NLST : For recall = " + str(round(recall_value_nlst,3))  + " precision is : " + str(round(max_precision_nlst,3)))
@@ -339,21 +341,11 @@ def main():
     brier_score_xgb = brier_score_loss(y_test, y_pred_proba_xgb)
     pr_auc_xgb = auc(recall_xgb, precision_xgb)
 
-    print("SCORES FOR XGB MODEL ON FINAL FEATURES")
+    print(" ------------- SCORES FOR XGB MODEL ON FINAL FEATURES -------------")
     print("ROC AUC Score: ", roc_auc_xgb)
     print("Accuracy Score: ", accuracy_xgb)
     print("Brier score ", brier_score_xgb)
     print("AUC-PR score  ", pr_auc_xgb)
-
-    # We extract the precision for a fixed recall on the plco dataset
-    y_pred_proba_xgb = xgb_final.predict_proba(x_plco)[:, 1]
-    precision, recall, thresholds = precision_recall_curve(y_plco, y_pred_proba_xgb)
-    recall_value_plco = 0.765
-    df = pd.concat([pd.DataFrame(precision, columns=['precision']), 
-            pd.DataFrame(recall,columns=['recall']), 
-            pd.DataFrame(thresholds,columns=['thresholds'])], axis=1)
-    max_precision_plco = df.loc[df['recall'] >= recall_value_plco].precision.max() 
-    print("For recall = " + str(round(recall_value_plco,3))  + " precision is : " + str(round(max_precision_plco,3)) )
 
     # We extract the precision for a fixed recall on the plco dataset
     y_pred_proba_lgb = xgb_final.predict_proba(x_plco)[:, 1]
@@ -373,6 +365,17 @@ def main():
             pd.DataFrame(thresholds,columns=['thresholds'])], axis=1)
     max_precision_nlst = df.loc[df['recall'] >= recall_value_nlst].precision.max() 
     print("On NLST : For recall = " + str(round(recall_value_nlst,3))  + " precision is : " + str(round(max_precision_nlst,3)))
+
+    # Plot the precision-recall curve
+    # We first plot the curve for the LGB model
+    plt.figure()
+    plt.plot(recall_lgb_final, precision_lgb_final, label='LGB on final features')
+    plt.plot(recall, precision, label='XGB on final features')
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title('Precision-Recall curve')
+    plt.legend()
+    plt.show()
 
     return None
 
