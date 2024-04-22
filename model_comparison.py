@@ -25,7 +25,7 @@ import lightgbm as lgb
 from lightgbm import LGBMClassifier
 from skopt import BayesSearchCV
 from xgboost import XGBClassifier
-from sklearn.metrics import roc_auc_score, auc, brier_score_loss, precision_recall_curve, accuracy_score
+from sklearn.metrics import roc_auc_score, auc, brier_score_loss, precision_recall_curve, accuracy_score, roc_curve
 import matplotlib.pyplot as plt
 
 
@@ -304,6 +304,7 @@ def main():
     precision_lgb, recall_lgb, _ = precision_recall_curve(y_test, y_pred_lgb)
     brier_score_lgb = brier_score_loss(y_test, y_pred_proba_lgb)
     pr_auc_lgb = auc(recall_lgb, precision_lgb)
+    fpr_lgb_final, tpr_lgb_final, _ = roc_curve(y_test, y_pred_proba_lgb)
 
     print(" ------------- SCORES FOR LGB MODEL ON FINAL FEATURES -------------")
     print("ROC AUC Score: ", roc_auc_lgb)
@@ -330,7 +331,8 @@ def main():
     max_precision_nlst = df.loc[df['recall'] >= recall_value_nlst].precision.max() 
     print("On NLST : For recall = " + str(round(recall_value_nlst,3))  + " precision is : " + str(round(max_precision_nlst,3)))
 
-    # Evaluate the XGB model on the test set
+    ############################################################
+    # ----------- Evaluate the XGB model on the test set --------------
     y_pred_xgb = xgb_final.predict(x_test)
     y_pred_proba_xgb = xgb_final.predict_proba(x_test)[:, 1]
 
@@ -340,6 +342,7 @@ def main():
     precision_xgb, recall_xgb, _ = precision_recall_curve(y_test, y_pred_xgb)
     brier_score_xgb = brier_score_loss(y_test, y_pred_proba_xgb)
     pr_auc_xgb = auc(recall_xgb, precision_xgb)
+    fpr_xgb_final, tpr_xgb_final, _ = roc_curve(y_test, y_pred_proba_lgb)
 
     print(" ------------- SCORES FOR XGB MODEL ON FINAL FEATURES -------------")
     print("ROC AUC Score: ", roc_auc_xgb)
@@ -376,6 +379,16 @@ def main():
     plt.title('Precision-Recall curve')
     plt.legend()
     plt.show()
+
+    # We then plot the ROC-AUC curve
+    plt.figure()
+    plt.plot(fpr_lgb_final, tpr_lgb_final, label='LGB on final features')
+    plt.plot(fpr_xgb_final, tpr_xgb_final, label='XGB on final features')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC-AUC curve')
+    plt.legend()
+    plt.show()    
 
     return None
 
