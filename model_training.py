@@ -185,6 +185,9 @@ def main():
     print(confusion_matrix(y_test, y_test_pred))
     print("\n")
 
+    # Save the model
+    pickle.dump(model, open(os.path.join(args.output_path, 'model.pkl'), 'wb'))
+
     # ------------------------ Calibration of the model ------------------------
     # We calibrate the model using the isotonic method
     model_calibrated = CalibratedClassifierCV(model, method='isotonic', cv='prefit')
@@ -221,7 +224,7 @@ def main():
     plt.show()
 
     # Save the model
-    pickle.dump(model_calibrated, open(os.path.join(args.output_path, 'final_model.pkl'), 'wb'))
+    pickle.dump(model_calibrated, open(os.path.join(args.output_path, 'model_calibrated.pkl'), 'wb'))
 
     return None
 
