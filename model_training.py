@@ -18,15 +18,11 @@ Pierre-Louis Benveniste
 import argparse
 import os
 import pandas as pd
-from sklearn.model_selection import train_test_split
 from skopt.space import Real, Integer
-# import lightgbm as lgb
-# from lightgbm import LGBMClassifier
 from skopt import BayesSearchCV
 from xgboost import XGBClassifier
 from sklearn.metrics import roc_auc_score, auc, brier_score_loss, precision_recall_curve, accuracy_score, roc_curve, precision_score, recall_score, confusion_matrix
 import matplotlib.pyplot as plt
-from sklearn.calibration import calibration_curve
 import pickle
 import shap
 from sklearn.calibration import calibration_curve, CalibratedClassifierCV
@@ -220,6 +216,18 @@ def main():
     plt.xlabel('Predicted probability')
     plt.ylabel('True probability')
     plt.title('Calibration curve of the final model on the test set')
+    plt.legend()
+    plt.show()
+
+    # Plot the ROC curve on train and test set
+    fpr_train, tpr_train, _ = roc_curve(y_train, model_calibrated.predict_proba(x_train)[:, 1])
+    fpr_test, tpr_test, _ = roc_curve(y_test, y_test_proba_calibrated)
+    plt.plot(fpr_train, tpr_train, label='Train set')
+    plt.plot(fpr_test, tpr_test, label='Test set')
+    plt.plot([0, 1], [0, 1], linestyle='--', color='black')
+    plt.xlabel('False positive rate')
+    plt.ylabel('True positive rate')
+    plt.title('ROC curve of the calibrated model on the train and test set')
     plt.legend()
     plt.show()
 
