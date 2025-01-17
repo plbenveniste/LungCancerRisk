@@ -216,9 +216,12 @@ def main():
     plt.plot([0, 1], [0, 1], linestyle='--', color='black')
     plt.xlabel('Predicted probability')
     plt.ylabel('True probability')
-    plt.title('Calibration curve of the final model')
+    plt.title('Calibration curve of the final model on the test set')
     plt.legend()
     plt.show()
+
+    # Save the model
+    pickle.dump(model_calibrated, open(os.path.join(args.output_path, 'final_model.pkl'), 'wb'))
 
     return None
 
