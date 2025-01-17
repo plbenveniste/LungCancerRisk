@@ -75,7 +75,8 @@ def main():
     x_nlst = nlst.drop(columns=['lung_cancer'])
     y_nlst = nlst['lung_cancer']
 
-    x_train, x_val, y_train, y_val = train_test_split(x_plco, y_plco, test_size=0.3, random_state=0)
+    # We use the PLCO data for training and the NLST data for testing
+    x_train,y_train = x_plco, y_plco
     x_test, y_test = x_nlst, y_nlst
 
     #------------------------ Initial model training ------------------------
@@ -83,24 +84,29 @@ def main():
     # search_spaces = {
     #     'learning_rate': Real(0.001, 0.5),
     #     'n_estimators': Integer(10, 1000),
-    #     'max_depth': Integer(3, 10),
-    #     'min_child_weight': Integer(1, 10),
-    #     'subsample': Real(0.1, 1),
-    #     'colsample_bytree': Real(0.001, 1),
-    #     'gamma': Real(0, 1),
-    #     'reg_alpha': Real(0, 1),
-    #     'reg_lambda': Real(0, 1),
+    #     'max_depth': Integer(2, 10),
+    #     'min_child_weight': Integer(1, 20),
+    #     'subsample': Real(0.01, 1),
+    #     'colsample_bytree': Real(0.0001, 0.1),
+    #     'gamma': Real(0, 10),
+    #     'reg_alpha': Real(0, 10),
+    #     'reg_lambda': Real(0, 10),
+    #     'scale_pos_weight': Real(1, 1000),
     # }
     # # We define the model
-    # model = XGBClassifier(seed=42,)
+    # model = XGBClassifier(seed=42)
     # # We define the search
     # search = BayesSearchCV(model, search_spaces, n_iter=100, n_jobs=1, cv=3, random_state=42, scoring='roc_auc')
     # # We fit the search
     # search.fit(x_train, y_train)
+    # # We get the best model
+    # model = search.best_estimator_
+    # # We print the best parameters
+    # print(search.best_params_)
 
-    ## Model training
-    model = XGBClassifier(colsample_bytree=0.001, gamma=1.0, learning_rate=0.1202500016477047, max_depth=3, min_child_weight=4,
-                           n_estimators=360, reg_alpha=0.0, reg_lambda=0.0, subsample=1.0, seed=42)
+    # ## Model training
+    model = XGBClassifier(colsample_bytree=0.1, gamma=1.4756144939113076, learning_rate=0.23379180644330527, max_depth=4,
+                    min_child_weight=20, n_estimators=474, reg_alpha=7.171328076797733, reg_lambda=0.0, scale_pos_weight=1.0, subsample=0.7171124789228925, seed=42)
     model.fit(x_train, y_train)
 
     # Prediction on the test set
@@ -123,7 +129,6 @@ def main():
 
     #------------------------ Feature selection ------------------------
     # We select the 10 most contributing features
-    #To see importance over the entire dataset
     # shap_values = shap.Explainer(model).shap_values(x_train)
     # shap.summary_plot(shap_values, x_train, plot_type="bar")
 
@@ -132,29 +137,35 @@ def main():
 
     # We keep only these features
     x_train = x_train[top_8_features]
-    x_val = x_val[top_8_features]
     x_test = x_test[top_8_features]
 
-    search_spaces = {
-        'learning_rate': Real(0.001, 0.5),
-        'n_estimators': Integer(10, 1000),
-        'max_depth': Integer(3, 10),
-        'min_child_weight': Integer(1, 10),
-        'subsample': Real(0.1, 1),
-        'colsample_bytree': Real(0.001, 1),
-        'gamma': Real(0, 1),
-        'reg_alpha': Real(0, 1),
-        'reg_lambda': Real(0, 1),
-    }
-    # We define the model
-    model = XGBClassifier(seed=42,)
-    # We define the search
-    search = BayesSearchCV(model, search_spaces, n_iter=100, n_jobs=1, cv=3, random_state=42, scoring='roc_auc')
-    # We fit the search
-    search.fit(x_train, y_train)
-    model = search.best_estimator_
-    # We print the best parameters
-    print(search.best_params_)
+    # ------------------------ Final model training ------------------------
+    # search_spaces = {
+    #     'learning_rate': Real(0.001, 0.5),
+    #     'n_estimators': Integer(10, 1000),
+    #     'max_depth': Integer(2, 10),
+    #     'min_child_weight': Integer(1, 20),
+    #     'subsample': Real(0.01, 1),
+    #     'colsample_bytree': Real(0.0001, 0.1),
+    #     'gamma': Real(0, 10),
+    #     'reg_alpha': Real(0, 10),
+    #     'reg_lambda': Real(0, 10),
+    #     'scale_pos_weight': Real(1, 1000),
+    # }
+    # # We define the model
+    # model = XGBClassifier(seed=42,)
+    # # We define the search
+    # search = BayesSearchCV(model, search_spaces, n_iter=100, n_jobs=1, cv=3, random_state=42, scoring='roc_auc')
+    # # We fit the search
+    # search.fit(x_train, y_train)
+    # model = search.best_estimator_
+    # # We print the best parameters
+    # print(search.best_params_)
+
+    # Model training using the best parameters from the bayesian search
+    model = XGBClassifier(colsample_bytree=0.0001, gamma=2.4481106754970896, learning_rate=0.22784513640150456, max_depth=2, min_child_weight=1,
+                    n_estimators=1000, reg_alpha=0.0, reg_lambda=10.0, scale_pos_weight=1.0, subsample=0.7732064138050453, seed=42)
+    model.fit(x_train, y_train)
 
     # Prediction on the test set
     y_test_pred = model.predict(x_test)
@@ -174,7 +185,7 @@ def main():
     print(confusion_matrix(y_test, y_test_pred))
     print("\n")
 
-    ############### CALIBRATION OF THE MODEL     ############################
+    # ------------------------ Calibration of the model ------------------------
     # We calibrate the model using the isotonic method
     model_calibrated = CalibratedClassifierCV(model, method='isotonic', cv='prefit')
     model_calibrated.fit(x_train, y_train)
@@ -193,11 +204,8 @@ def main():
     precision_test_calibrated, recall_test_calibrated, _ = precision_recall_curve(y_test, y_test_pred_calibrated)
     print("AUC-PR score:", auc(recall_test_calibrated, precision_test_calibrated))
     print("Confusion matrix:")
-    tn, fp, fn, tp = confusion_matrix(y_test, y_test_pred_calibrated).ravel()
-    print("TN:", tn)
-    print("FP:", fp)
-    print("FN:", fn)
-    print("TP:", tp)
+    print("Confusion matrix:")
+    print(confusion_matrix(y_test, y_test_pred))
     print("\n")
 
     # Plot the calibration before and after calibration
@@ -205,16 +213,6 @@ def main():
     prob_true_calibrated, prob_pred_calibrated = calibration_curve(y_test, y_test_proba_calibrated, n_bins=10)
     plt.plot(prob_pred, prob_true, marker='o', label='Uncalibrated')
     plt.plot(prob_pred_calibrated, prob_true_calibrated, marker='o', label='Calibrated')
-    plt.plot([0, 1], [0, 1], linestyle='--', color='black')
-    plt.xlabel('Predicted probability')
-    plt.ylabel('True probability')
-    plt.title('Calibration curve of the final model')
-    plt.legend()
-    plt.show()
-
-    # Plot the calibration curve only of the calibrated model
-    prob_true_calibrated, prob_pred_calibrated = calibration_curve(y_test, y_test_proba_calibrated, n_bins=10)
-    plt.plot(prob_pred_calibrated, prob_true_calibrated, marker='o', label='Calibrated XGBoost model')
     plt.plot([0, 1], [0, 1], linestyle='--', color='black')
     plt.xlabel('Predicted probability')
     plt.ylabel('True probability')
