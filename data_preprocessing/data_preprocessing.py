@@ -72,9 +72,11 @@ def main():
     print("Number of patients in PLCO after removing patients who died of something else than lung cancer: ", plco.shape[0])
     print("Number of patients in NLST after removing patients who died of something else than lung cancer: ", nlst.shape[0])
 
-    # We remove patients who were study for less than 6 years (1827 jours) 
+    # Censored data removal:
+    ## Either subjects didn't have cancer and were study for at least than 6 years
+    ## Or subjects had cancer
     plco = plco[((plco['lung_exitstat']!=1) & (plco['lung_exitdays']>2190)) | (plco['lung_exitstat']==1)]
-    nlst = nlst[((nlst['scr_group']!=1) & (nlst['fup_days']>2190)) | (nlst['scr_group']==1)]
+    nlst = nlst[((pd.to_numeric(nlst['candx_days'], errors='coerce').notnull()) & (nlst['fup_days']>2190)) | (pd.to_numeric(nlst['candx_days'], errors='coerce').isnull())]
     print("Number of patients in PLCO after removing patients who were study for less than 6 years: ", plco.shape[0])
     print("Number of patients in NLST after removing patients who were study for less than 6 years: ", nlst.shape[0])
 
