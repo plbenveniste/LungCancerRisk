@@ -67,9 +67,9 @@ def main():
     plco = plco.loc[plco['d_dthl']!=0]
     nlst = nlst.loc[nlst['finaldeathlc']!=0]
 
-    # We remove patients who were study for less than 5 years (1827 jours) 
-    plco = plco[((plco['lung_exitstat']!=1) & (plco['lung_exitdays']>1827)) | (plco['lung_exitstat']==1)]
-    nlst = nlst[((nlst['scr_group']!=1) & (nlst['fup_days']>1827)) | (nlst['scr_group']==1)]
+    # We remove patients who were study for less than 6 years (1827 jours) 
+    plco = plco[((plco['lung_exitstat']!=1) & (plco['lung_exitdays']>2190)) | (plco['lung_exitstat']==1)]
+    nlst = nlst[((nlst['scr_group']!=1) & (nlst['fup_days']>2190)) | (nlst['scr_group']==1)]
 
     # Uniformisation of both datasets
     ## Uniformisation of PLCO
