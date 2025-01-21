@@ -75,26 +75,39 @@ def main():
     # Censored data removal:
     ## Either subjects didn't have cancer and were study for at least than 6 years
     ## Or subjects had cancer
-    plco = plco[((plco['lung_exitstat']!=1) & (plco['lung_exitdays']>2190)) | (plco['lung_exitstat']==1)]
-    nlst = nlst[((pd.to_numeric(nlst['candx_days'], errors='coerce').notnull()) & (nlst['fup_days']>2190)) | (pd.to_numeric(nlst['candx_days'], errors='coerce').isnull())]
+    plco = plco[((plco['lung_cancer']!=1) & (plco['lung_exitdays']>2190)) | (plco['lung_cancer']==1)]
+    nlst = nlst[((pd.to_numeric(nlst['candx_days'], errors='coerce').isnull()) & (nlst['fup_days']>2190)) | (pd.to_numeric(nlst['candx_days'], errors='coerce').notnull())]
     print("Number of patients in PLCO after removing patients who were study for less than 6 years: ", plco.shape[0])
     print("Number of patients in NLST after removing patients who were study for less than 6 years: ", nlst.shape[0])
 
     # Uniformisation of both datasets
     ## Uniformisation of PLCO
     plco = plco[["age", "sex", "height_f", "weight_f", "race7", "ssmokea_f", "cig_stat", "cigar", "pipe", "pack_years", "smokea_f", "cigpd_f","cig_years", "bronchit_f",
-                    "diabetes_f", "emphys_f", "hearta_f", "hyperten_f", "stroke_f", "lung_fh","lung_cancer"
+                    "diabetes_f", "emphys_f", "hearta_f", "hyperten_f", "stroke_f", "lung_fh", "lung_cancer", "candxdaysl"
                 ]]
     plco["race7"] = plco["race7"].replace(3,1)
     plco["lung_fh"] = plco["lung_fh"].replace(9,0)
 
+    # We consider that lung screening is positive if the patient has lung cancer and diagnosis was made in the first 6 years
+    plco["lung_cancer"] = plco["lung_cancer"].apply(lambda x: 1 if x==1 else 0)
+    print("Number of patients in PLCO with lung cancer: ", plco[plco["lung_cancer"]==1].shape[0])
+    plco["lung_cancer"] = plco["lung_cancer"] * (plco["candxdaysl"]<=2190)
+    print("Number of patients in PLCO with lung cancer and diagnosis in the first 6 years: ", plco[plco["lung_cancer"]==1].shape[0])
+    # We remove the candxdaysl column
+    plco = plco.drop(columns=["candxdaysl"])
+
     ## Uniformisation of NLST
     nlst_temp = nlst[["age", "gender", "height",  "weight", "race", "age_quit", "cigsmok", "cigar", "pipe", "pkyr", "smokeage", "smokeday", "smokeyr", "agechro", "diagdiab",
-            "diagemph", "diaghear", "diaghype", "diagstro",
+            "diagemph", "diaghear", "diaghype", "diagstro", 'candx_days'
             ]]
     ### Creation of the lung_cancer variable
-    nlst_temp["lung_cancer"] = nlst['candx_days'].apply(pd.to_numeric)
+    nlst_temp["lung_cancer"] = nlst_temp['candx_days'].apply(pd.to_numeric)
     nlst_temp["lung_cancer"] = nlst_temp["lung_cancer"].apply(lambda x: 1 if pd.notnull(x) else 0)
+    print("Number of patients in NLST with lung cancer: ", nlst_temp[nlst_temp["lung_cancer"]==1].shape[0])
+    nlst_temp["lung_cancer"] = nlst_temp["lung_cancer"] * (nlst_temp['candx_days']<=2190)
+    print("Number of patients in NLST with lung cancer and diagnosis in the first 6 years: ", nlst_temp[nlst_temp["lung_cancer"]==1].shape[0])
+    # We remove the candx_days column
+    nlst_temp = nlst_temp.drop(columns=["candx_days"])
 
     nlst_temp["lung_fh"] = nlst[["famfather","fammother", "famchild", "famsister", "fambrother"]].max(axis=1)
     nlst_temp["race"] = nlst_temp["race"].replace([3,4,6,95,96,98,99],[4,6,7,7,7,7,7])
