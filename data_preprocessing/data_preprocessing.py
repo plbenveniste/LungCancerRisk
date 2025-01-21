@@ -59,25 +59,32 @@ def main():
     # Loading of both datasets
     plco = pd.read_csv(plco_path)
     nlst = pd.read_csv(nlst_path, low_memory=False)
+    print("Number of patients in PLCO: ", plco.shape[0])
+    print("Number of patients in NLST: ", nlst.shape[0])
 
     # We first remove all non-smokers or non-previous smokers
     plco = plco.loc[plco.cig_stat > 0]
+    print("Number of patients in PLCO after removing non-smokers: ", plco.shape[0])
 
     # We remove patients who died of something else than lung cancer
     plco = plco.loc[plco['d_dthl']!=0]
     nlst = nlst.loc[nlst['finaldeathlc']!=0]
+    print("Number of patients in PLCO after removing patients who died of something else than lung cancer: ", plco.shape[0])
+    print("Number of patients in NLST after removing patients who died of something else than lung cancer: ", nlst.shape[0])
 
     # We remove patients who were study for less than 6 years (1827 jours) 
     plco = plco[((plco['lung_exitstat']!=1) & (plco['lung_exitdays']>2190)) | (plco['lung_exitstat']==1)]
     nlst = nlst[((nlst['scr_group']!=1) & (nlst['fup_days']>2190)) | (nlst['scr_group']==1)]
+    print("Number of patients in PLCO after removing patients who were study for less than 6 years: ", plco.shape[0])
+    print("Number of patients in NLST after removing patients who were study for less than 6 years: ", nlst.shape[0])
 
     # Uniformisation of both datasets
     ## Uniformisation of PLCO
     plco = plco[["age", "sex", "height_f", "weight_f", "race7", "ssmokea_f", "cig_stat", "cigar", "pipe", "pack_years", "smokea_f", "cigpd_f","cig_years", "bronchit_f",
                     "diabetes_f", "emphys_f", "hearta_f", "hyperten_f", "stroke_f", "lung_fh","lung_cancer"
                 ]]
-    plco["race7"] = plco["race7"].replace(3,1) # Changed based on TODO
-    plco["lung_fh"] = plco["lung_fh"].replace(9,0) # Changed based on TODO
+    plco["race7"] = plco["race7"].replace(3,1)
+    plco["lung_fh"] = plco["lung_fh"].replace(9,0)
 
     ## Uniformisation of NLST
     nlst_temp = nlst[["age", "gender", "height",  "weight", "race", "age_quit", "cigsmok", "cigar", "pipe", "pkyr", "smokeage", "smokeday", "smokeyr", "agechro", "diagdiab",
@@ -121,10 +128,13 @@ def main():
     # Add BMI column
     plco.loc[:, 'bmi'] = plco['weight_f'] / plco['height_f']**2 * 703
     nlst['bmi'] = nlst['weight_f'] / nlst['height_f']**2 * 703
+    print("Final number of columns in PLCO: ", plco.shape[1])
+    print("Final number of columns in NLST: ", nlst.shape[1])
 
     # Save the data
     plco.to_csv(os.path.join(output_path, "preprocessed_plco.csv"), index=False)
     nlst.to_csv(os.path.join(output_path, "preprocessed_nlst.csv"), index=False)
+    print("Data saved in ", output_path)
     
     return None
 
