@@ -146,8 +146,11 @@ def main():
     print("Final number of columns in PLCO: ", plco.shape[1])
     print("Final number of columns in NLST: ", nlst.shape[1])
 
-    # Save the data
+    # Save the data with the first column being the initial index
+    ## Add the index as a column
+    plco["index"] = plco.index
     plco.to_csv(os.path.join(output_path, "preprocessed_plco.csv"), index=False)
+    nlst["index"] = nlst.index
     nlst.to_csv(os.path.join(output_path, "preprocessed_nlst.csv"), index=False)
     print("Data saved in ", output_path)
     
