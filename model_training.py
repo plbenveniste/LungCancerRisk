@@ -62,8 +62,8 @@ def main():
     nlst = pd.read_csv(args.data_nlst)
 
     # we remove height and weight since they are correlated with BMI
-    plco = plco.drop(columns=['height_f', 'weight_f'])
-    nlst = nlst.drop(columns=['height_f', 'weight_f'])
+    plco = plco.drop(columns=['height_f', 'weight_f', "index"])
+    nlst = nlst.drop(columns=['height_f', 'weight_f', "index"])
 
     # Split the data into features and target variable
     x_plco = plco.drop(columns= ['lung_cancer'])
