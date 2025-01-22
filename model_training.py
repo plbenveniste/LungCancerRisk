@@ -75,8 +75,8 @@ def main():
     x_train,y_train = x_plco, y_plco
     x_test, y_test = x_nlst, y_nlst
 
-    #------------------------ Initial model training ------------------------
-    ## We hide the Bayesian search since we now have the best parameters
+    # # ------------------------ Initial model training ------------------------
+    # # We hide the Bayesian search since we now have the best parameters
     # search_spaces = {
     #     'learning_rate': Real(0.001, 0.5),
     #     'n_estimators': Integer(10, 1000),
@@ -87,7 +87,6 @@ def main():
     #     'gamma': Real(0, 10),
     #     'reg_alpha': Real(0, 10),
     #     'reg_lambda': Real(0, 10),
-    #     'scale_pos_weight': Real(1, 1000),
     # }
     # # We define the model
     # model = XGBClassifier(seed=42)
@@ -101,8 +100,7 @@ def main():
     # print(search.best_params_)
 
     # ## Model training
-    model = XGBClassifier(colsample_bytree=0.1, gamma=1.4756144939113076, learning_rate=0.23379180644330527, max_depth=4,
-                    min_child_weight=20, n_estimators=474, reg_alpha=7.171328076797733, reg_lambda=0.0, scale_pos_weight=1.0, subsample=0.7171124789228925, seed=42)
+    model = XGBClassifier(colsample_bytree=0.1, gamma=0.0, learning_rate=0.5, max_depth=6, min_child_weight=9, n_estimators=716, reg_alpha=10.0, reg_lambda=10.0, subsample=1.0, seed=42)
     model.fit(x_train, y_train)
 
     # Prediction on the test set
@@ -135,7 +133,7 @@ def main():
     x_train = x_train[top_8_features]
     x_test = x_test[top_8_features]
 
-    # ------------------------ Final model training ------------------------
+    # # ------------------------ Final model training ------------------------
     # search_spaces = {
     #     'learning_rate': Real(0.001, 0.5),
     #     'n_estimators': Integer(10, 1000),
@@ -146,7 +144,6 @@ def main():
     #     'gamma': Real(0, 10),
     #     'reg_alpha': Real(0, 10),
     #     'reg_lambda': Real(0, 10),
-    #     'scale_pos_weight': Real(1, 1000),
     # }
     # # We define the model
     # model = XGBClassifier(seed=42,)
@@ -159,8 +156,8 @@ def main():
     # print(search.best_params_)
 
     # Model training using the best parameters from the bayesian search
-    model = XGBClassifier(colsample_bytree=0.0001, gamma=2.4481106754970896, learning_rate=0.22784513640150456, max_depth=2, min_child_weight=1,
-                    n_estimators=1000, reg_alpha=0.0, reg_lambda=10.0, scale_pos_weight=1.0, subsample=0.7732064138050453, seed=42)
+    model = XGBClassifier(colsample_bytree=0.0895899118524542, gamma=3.3284293856457188, learning_rate=0.2828331401200269, max_depth=6, min_child_weight=20,
+                          n_estimators=539, reg_alpha=6.795836525295133, reg_lambda=10.0, subsample=0.4763684256544824, seed=42)
     model.fit(x_train, y_train)
 
     # Prediction on the test set
@@ -184,6 +181,19 @@ def main():
     # Save the model
     pickle.dump(model, open(os.path.join(args.output_path, 'model.pkl'), 'wb'))
 
+    # Compare the model with the USPSTF recommendations
+    # We find the model precision with a fixed recall of 0.9886055344546935 for NLST
+    recall_fixed_nlst = 0.9886055344546935
+    precision_test, recall_test, _ = precision_recall_curve(y_test, y_test_proba)
+    precision_fixed = precision_test[recall_test >= recall_fixed_nlst].min()
+    print("Model precision with a fixed recall of 0.9886055344546935 on test set (NLST):", precision_fixed)
+    # Same for PLCO with a fixed recall of 0.78
+    recall_fixed_plco = 0.78
+    y_train_proba = model.predict_proba(x_train)[:, 1]
+    precision_train, recall_train, _ = precision_recall_curve(y_train, y_train_proba)
+    precision_fixed = precision_train[recall_train >= recall_fixed_plco].min()
+    print("Model precision with a fixed recall of 0.78 on train set (PLCO):", precision_fixed)
+
     # ------------------------ Calibration of the model ------------------------
     # We calibrate the model using the isotonic method
     model_calibrated = CalibratedClassifierCV(model, method='isotonic', cv='prefit')
@@ -206,6 +216,19 @@ def main():
     print("Confusion matrix:")
     print(confusion_matrix(y_test, y_test_pred))
     print("\n")
+
+    # Compare the calibrated model with the USPSTF recommendations
+    # We find the model precision with a fixed recall of 0.9886055344546935 for NLST
+    recall_fixed_nlst = 0.9886055344546935
+    precision_test_calibrated, recall_test_calibrated, _ = precision_recall_curve(y_test, y_test_proba_calibrated)
+    precision_fixed = precision_test_calibrated[recall_test_calibrated >= recall_fixed_nlst].min()
+    print("Model precision with a fixed recall of 0.9886055344546935 on test set (NLST):", precision_fixed)
+    # Same for PLCO with a fixed recall of 0.78
+    recall_fixed_plco = 0.78
+    y_train_proba_calibrated = model_calibrated.predict_proba(x_train)[:, 1]
+    precision_train_calibrated, recall_train_calibrated, _ = precision_recall_curve(y_train, y_train_proba_calibrated)
+    precision_fixed = precision_train_calibrated[recall_train_calibrated >= recall_fixed_plco].min()
+    print("Model precision with a fixed recall of 0.78 on train set (PLCO):", precision_fixed)
 
     # Plot the calibration before and after calibration
     prob_true, prob_pred = calibration_curve(y_test, y_test_proba, n_bins=10)
