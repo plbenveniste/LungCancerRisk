@@ -117,13 +117,13 @@ def main():
     plco = plco.loc[plco.cig_stat > 0]
     print("Number of participants in PLCO for PLCOm2012 after removing non-smokers: " + str(len(plco)))
     
-    # We keep : follow-up was truncated at 6 years
-    plco = plco.loc[(((plco['lung_cancer']!=1) & (plco["lung_exitdays"]>=2190)) | (plco['lung_exitdays'] <= 2190))]
-    print("Number of participants in PLCO for PLCOm2012 after truncating at 6 years: " + str(len(plco)))
+    # # We keep : follow-up was truncated at 6 years
+    # plco = plco.loc[(((plco['lung_cancer']!=1) & (plco["lung_exitdays"]>=2190)) | (plco['lung_exitdays'] <= 2190))]
+    # print("Number of participants in PLCO for PLCOm2012 after truncating at 6 years: " + str(len(plco)))
 
     # Uniformisation of PLCO
     plco = plco[["age", "race7", "educat", "weight_f", "height_f", "d_seer_death", "ph_first_cancer",  "lung_fh", "cig_stat",
-                  "cigpd_f", "cig_years", "cig_stop", "plco_id", "lung_cancer"]]
+                  "cigpd_f", "cig_years", "cig_stop", "plco_id", "lung_cancer", "lung_exitdays"]]
 
     # For age: remove participants which have a non numeric age
     plco = plco.loc[plco['age'].notnull()]
@@ -146,12 +146,10 @@ def main():
     plco = plco.loc[plco['height_f'].notnull()]
     plco.loc[:, 'bmi'] =  703 * plco['weight_f'] / (plco['height_f']**2)
     plco.loc[:, 'bmi'] = plco['bmi'].round(0)
-    print("Values of BMI in PLCO: ", plco['bmi'].unique())
     # Remove participant who have no bmi
     plco = plco.loc[plco['bmi'].notnull()]
     # Remove weight_f and height_f columns
     plco = plco.drop(columns=['weight_f', 'height_f'])
-    print("Number of participants in PLCO for PLCOm2012 after removing participants with missing weight or height: " + str(len(plco)))
 
     # For copd: create a column with binary values : 1 if d_seer_death==50130 and 0 otherwise
     plco['copd'] = 1 * (plco['d_seer_death'] == 50130)
@@ -195,9 +193,14 @@ def main():
     # Remove cig_stop column
     plco = plco.drop(columns=['cig_stop'])
 
+    # For lung cancer, we consider that lung screening is positive if the patient has lung cancer and diagnosis was made in the first 6 years
+    plco["lung_cancer"] = 1 * ((plco["lung_cancer"] == 1) & (plco["lung_exitdays"] <= 2190))
+    # Remove lung_exitdays column
+    plco = plco.drop(columns=['lung_exitdays'])
+
     # Compute the risk of lung cancer for each participant
     # Create an empty column to store the risk of lung cancer for each participant
-    plco["risk"] = 0
+    plco["risk"] = 0.
     print("Number of participants in PLCO for PLCOm2012: " + str(len(plco)))
 
     # Iterate over all the participants
@@ -215,109 +218,124 @@ def main():
     max_precision_plco = df.loc[df['recall'] >= recall_value_plco].precision.max() 
     print("On PLCO : For recall = " + str(round(recall_value_plco,5))  + " precision is : " + str(round(max_precision_plco,5)))
 
-    # ################################################################
-    # ###################### COMPARISON ON NLST ######################
-    # ################################################################
-    # nlst = pd.read_csv(nlst_path, low_memory=False)
+    ################################################################
+    ###################### COMPARISON ON NLST ######################
+    ################################################################
+    nlst = pd.read_csv(nlst_path, low_memory=False)
+    print("Number of participants in NLST for PLCOm2012: " + str(len(nlst)))
 
     # # Keep participants who never got lung cancer and those who got lung cancer in the first 6 years (2190 days)
-    # # nlst = nlst.loc[((nlst['candx_days'].isnull()) | (nlst['candx_days'] <= 2190))]
-    # nlst = nlst.loc[(((nlst['candx_days'].isnull()) & (nlst["fup_days"]>=2190)) | (nlst['candx_days'] <= 2190))]
+    # nlst = nlst.loc[((nlst['candx_days'].isnull()) | (nlst['candx_days'] <= 2190))]
 
-    # nlst = nlst[["race", "educat", "height",  "weight", "diagcopd", "num_confirmed", "famfather","fammother", "famchild", "famsister",
-    #                 "fambrother", "cigsmok", "smokeday", "smokeyr", "age_quit","age", "can_scr", "pid"]]
+    nlst = nlst[["race", "educat", "height",  "weight", "diagcopd", "num_confirmed", "famfather","fammother", "famchild", "famsister",
+                    "fambrother", "cigsmok", "smokeday", "smokeyr", "age_quit","age", "can_scr", "pid", 
+                    "cancblad", "cancbrea", "canccerv", "canccolo", "cancesop", "canckidn", "canclary", "canclung", "cancnasa",
+                    "cancoral", "cancpanc", "cancphar", "cancstom", "cancthyr", "canctran", "candx_days"]]
 
-    # # For race : 4 becomes 1, 3 becomes 4, 6 and above is removed
-    # # first remove subject which have race=6 or above
-    # nlst = nlst[nlst["race"]<6]
-    # nlst["race"] = nlst["race"].replace([4,3],[1,4])
-    # # remove participant who have no race
-    # nlst = nlst.loc[nlst['race'].notnull()]
+    # For age: remove participants which have a non numeric age
+    nlst = nlst.loc[nlst['age'].notnull()]
+    
+    # For race : 4 becomes 1, 3 becomes 4, 6 and above is removed
+    # first remove subject which have race=6 or above
+    nlst = nlst[nlst["race"]<6]
+    nlst["race"] = nlst["race"].replace([4,3],[1,4])
+    # remove participant who have no race
+    nlst = nlst.loc[nlst['race'].notnull()]
 
-    # # For education : 2 becomes 1, 3 becomes 2, 4 becomes 3, 5 becomes 4, 6 becomes 5, 7 becomes 6 and 8 or more is removed
-    # nlst = nlst[nlst['educat'] < 8]
-    # nlst["educat"] = nlst["educat"].replace([2,3,4,5,6,7],[1,2,3,4,5,6])
-    # # Remove participant who have no education
-    # nlst = nlst.loc[nlst['educat'].notnull()]
+    # For education : 2 becomes 1, 3 becomes 2, 4 becomes 3, 5 becomes 4, 6 becomes 5, 7 becomes 6 and 8 or more is removed
+    nlst = nlst[nlst['educat'] < 8]
+    nlst["educat"] = nlst["educat"].replace([2,3,4,5,6,7],[1,2,3,4,5,6])
+    # Remove participant who have no education
+    nlst = nlst.loc[nlst['educat'].notnull()]
 
-    # # For bmi : round it to the nearest integer
-    # nlst.loc[:, 'bmi'] = nlst['weight'] / nlst['height']**2 * 703
-    # nlst.loc[:, 'bmi'] = nlst['bmi'].round(0)
-    # # Remove participant who have no bmi
-    # nlst = nlst.loc[nlst['bmi'].notnull()]
-    # # Remove weight and height columns
-    # nlst = nlst.drop(columns=['weight', 'height'])
+    # For bmi : round it to the nearest integer
+    nlst.loc[:, 'bmi'] = 703 * nlst['weight'] / (nlst['height']**2) 
+    nlst.loc[:, 'bmi'] = nlst['bmi'].round(0)
+    # Remove participant who have no bmi
+    nlst = nlst.loc[nlst['bmi'].notnull()]
+    # Remove weight and height columns
+    nlst = nlst.drop(columns=['weight', 'height'])
 
-    # # For copd: create a column with binary values : 1 if diagcopd==1 and 0 otherwise
-    # nlst['copd'] = 1 * (nlst['diagcopd'] == 1)
-    # # Remove participant who have no copd
-    # nlst = nlst.loc[nlst['copd'].notnull()]
-    # # Remove diagcopd column
-    # nlst = nlst.drop(columns=['diagcopd'])
+    # For copd: create a column with binary values : 1 if diagcopd==1 and 0 otherwise
+    # Remove participant who have no diagcopd
+    nlst = nlst.loc[nlst['diagcopd'].notnull()]
+    nlst['copd'] = 1 * (nlst['diagcopd'] == 1)
+    # Remove diagcopd column
+    nlst = nlst.drop(columns=['diagcopd'])
 
-    # # For cancer_hist: create a column with binary values : 1 if num_confirmed>0 and 0 otherwise
-    # nlst['cancer_hist'] = 1 * (nlst['num_confirmed'] > 0)
-    # # Remove participant who have no cancer_hist
-    # nlst = nlst.loc[nlst['cancer_hist'].notnull()]
-    # # Remove num_confirmed column
-    # nlst = nlst.drop(columns=['num_confirmed'])
+    # For cancer_hist: create a column with binary values : 1 if sum of the cancer columns is greater than 0 and 0 otherwise 
+    nlst['cancer_hist'] = 1 * (nlst[['cancblad', 'cancbrea', 'canccerv', 'canccolo', 'cancesop', 'canckidn', 'canclary', 'canclung', 'cancnasa',
+                                    'cancoral', 'cancpanc', 'cancphar', 'cancstom', 'cancthyr', 'canctran']].sum(axis=1) > 0)
+    # Remove participant who have no cancer_hist
+    nlst = nlst.loc[nlst['cancer_hist'].notnull()]
+    # Remove unwanted columns
+    nlst = nlst.drop(columns=['cancblad', 'cancbrea', 'canccerv', 'canccolo', 'cancesop', 'canckidn', 'canclary', 'cancnasa',
+                                    'cancoral', 'cancpanc', 'cancphar', 'cancstom', 'cancthyr', 'canctran'])
 
-    # # For family_hist_lung_cancer: binary value : 1 if at least one of the famfather, fammother, famchild, famsister, fambrother is 1
-    # nlst["lung_fh"] = nlst[["famfather","fammother", "famchild", "famsister", "fambrother"]].max(axis=1)
-    # # Remove participant who have no family_hist_lung_cancer
-    # nlst = nlst.loc[nlst['lung_fh'].notnull()]
+    # For family_hist_lung_cancer: binary value : 1 if at least one of the famfather, fammother, famchild, famsister, fambrother is 1
+    nlst["lung_fh"] = nlst[["famfather","fammother", "famchild", "famsister", "fambrother"]].max(axis=1)
+    # Remove participant who have no family_hist_lung_cancer
+    nlst = nlst.loc[nlst['lung_fh'].notnull()]
+    # Drop the columns famfather, fammother, famchild, famsister, fambrother
+    nlst = nlst.drop(columns=["famfather","fammother", "famchild", "famsister", "fambrother"])
 
-    # # For smoking_status: create a column with binary values : 1 if cigsmok==1 and 0 otherwise
-    # nlst['smoking_status'] = 1 * (nlst['cigsmok'] == 1)
-    # # Remove participant who have no smoking status
-    # nlst = nlst.loc[nlst['smoking_status'].notnull()]
-    # # Remove cigsmok column
-    # nlst = nlst.drop(columns=['cigsmok'])
+    # For smoking_status: create a column with binary values : 1 if cigsmok==1 and 0 otherwise
+    # Remove participant who have no cigsmok
+    nlst = nlst.loc[nlst['cigsmok'].notnull()]
+    nlst['smoking_status'] = 1 * (nlst['cigsmok'] == 1)
+    # Remove cigsmok column
+    nlst = nlst.drop(columns=['cigsmok'])
 
-    # # For smoking_intensity: create a column with the number of cigarettes smoked per day. Then remove participant who have no smoking intensity
-    # nlst['smoking_intensity'] = nlst['smokeday']
-    # nlst = nlst.loc[nlst['smoking_intensity'].notnull()]
-    # # Remove smokeday column
-    # nlst = nlst.drop(columns=['smokeday'])
+    # For smoking_intensity: create a column with the number of cigarettes smoked per day. Then remove participant who have no smoking intensity
+    nlst['smoking_intensity'] = nlst['smokeday']
+    nlst = nlst.loc[nlst['smoking_intensity'].notnull()]
+    # Remove smokeday column
+    nlst = nlst.drop(columns=['smokeday'])
 
-    # # For duration_smoking: create a column with the duration of smoking. Then remove participant who have no duration of smoking
-    # nlst['duration_smoking'] = nlst['smokeyr']
-    # nlst = nlst.loc[nlst['duration_smoking'].notnull()]
-    # # Remove smokeyr column
-    # nlst = nlst.drop(columns=['smokeyr'])
+    # For duration_smoking: create a column with the duration of smoking. Then remove participant who have no duration of smoking
+    nlst['duration_smoking'] = nlst['smokeyr']
+    nlst = nlst.loc[nlst['duration_smoking'].notnull()]
+    # Remove smokeyr column
+    nlst = nlst.drop(columns=['smokeyr'])
 
-    # # For smoking_quit_time: create a column with the years since the person has quit smoking = age - age_quit or 0 if age_quit is Null
-    # nlst['smoking_quit_time'] = nlst['age'] - nlst['age_quit']
-    # nlst.loc[nlst['age_quit'].isnull(), 'smoking_quit_time'] = 0
-    # # Remove column age_quit
-    # nlst = nlst.drop(columns=['age_quit'])
+    # For smoking_quit_time: create a column with the years since the person has quit smoking = age - age_quit or 0 if age_quit is Null
+    nlst['smoking_quit_time'] = nlst['age'] - nlst['age_quit']
+    nlst.loc[nlst['age_quit'].isnull(), 'smoking_quit_time'] = 0
+    # Replace negative values by 0
+    nlst.loc[nlst['smoking_quit_time'] < 0, 'smoking_quit_time'] = 0
+    # Remove column age_quit
+    nlst = nlst.drop(columns=['age_quit'])
 
-    # # For cancer screening : 1 if can_scr>0 and 0 otherwise
-    # nlst["can_scr"] = 1 * (nlst["can_scr"] > 0)
+    # For cancer screening : 1 if can_scr>0 and 0 otherwise
+    nlst["lung_cancer"] = nlst['candx_days'].apply(pd.to_numeric)
+    nlst["lung_cancer"] = nlst["lung_cancer"].apply(lambda x: 1 if pd.notnull(x) else 0)
+    nlst["lung_cancer"] = nlst["lung_cancer"] * (nlst['candx_days']<=2190)
+    # Drop the column candx_days
+    nlst = nlst.drop(columns=["candx_days"])
 
-    # # Compute the risk of lung cancer for each participant
-    # # Create an empty column to store the risk of lung cancer for each participant
-    # nlst["risk"] = 0
-    # print("Number of participants in NLST for PLCOm2012: " + str(len(nlst)))
+    # Compute the risk of lung cancer for each participant
+    # Create an empty column to store the risk of lung cancer for each participant
+    nlst["risk"] = 0.
+    print("Number of participants in NLST for PLCOm2012: " + str(len(nlst)))
 
-    # # Iterate over all the participants
-    # for index, row in nlst.iterrows():
-    #     nlst.loc[index, "risk"] = model_plcom2012(row["age"],row["race"], row["educat"], row["bmi"], row["copd"], row["cancer_hist"],
-    #                                                row["lung_fh"], row["smoking_status"], row["smoking_intensity"], row["duration_smoking"],
-    #                                                row["smoking_quit_time"])
+    # Iterate over all the participants
+    for index, row in nlst.iterrows():
+        nlst.loc[index, "risk"] = model_plcom2012(row["age"],row["race"], row["educat"], row["bmi"], row["copd"], row["cancer_hist"],
+                                                   row["lung_fh"], row["smoking_status"], row["smoking_intensity"], row["duration_smoking"],
+                                                   row["smoking_quit_time"])
         
-    # # Compute the performance of the model
-    # precision, recall, thresholds = precision_recall_curve(nlst['can_scr'], nlst['risk'])
-    # recall_value_nlst = 0.988
-    # df = pd.concat([pd.DataFrame(precision, columns=['precision']), 
-    #         pd.DataFrame(recall,columns=['recall']), 
-    #         pd.DataFrame(thresholds,columns=['thresholds'])], axis=1)
-    # max_precision_nlst = df.loc[df['recall'] >= recall_value_nlst].precision.max() 
-    # print("On NLST : For recall = " + str(round(recall_value_nlst,3))  + " precision is : " + str(round(max_precision_nlst,3)))
+    # Compute the performance of the model
+    precision, recall, thresholds = precision_recall_curve(nlst['lung_cancer'], nlst['risk'])
+    recall_value_nlst = 0.9886055344546935
+    df = pd.concat([pd.DataFrame(precision, columns=['precision']), 
+            pd.DataFrame(recall,columns=['recall']), 
+            pd.DataFrame(thresholds,columns=['thresholds'])], axis=1)
+    max_precision_nlst = df.loc[df['recall'] >= recall_value_nlst].precision.max() 
+    print("On NLST : For recall = " + str(round(recall_value_nlst,5))  + " precision is : " + str(round(max_precision_nlst,5)))
 
-    # #######################################################################
-    # ###################### COMPARISON WITH XGB MODEL ######################
-    # #######################################################################
+    #######################################################################
+    ###################### COMPARISON WITH XGB MODEL ######################
+    #######################################################################
 
     # # We preprocess the data to have the same columns as the XGB model
     # plco_xgb = pd.read_csv(plco_path)
