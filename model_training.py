@@ -185,13 +185,13 @@ def main():
     # We find the model precision with a fixed recall of 0.9886055344546935 for NLST
     recall_fixed_nlst = 0.9886055344546935
     precision_test, recall_test, _ = precision_recall_curve(y_test, y_test_proba)
-    precision_fixed = precision_test[recall_test >= recall_fixed_nlst].min()
+    precision_fixed = precision_test[recall_test >= recall_fixed_nlst].max()
     print("Model precision with a fixed recall of 0.9886055344546935 on test set (NLST):", precision_fixed)
     # Same for PLCO with a fixed recall of 0.78
     recall_fixed_plco = 0.78
     y_train_proba = model.predict_proba(x_train)[:, 1]
     precision_train, recall_train, _ = precision_recall_curve(y_train, y_train_proba)
-    precision_fixed = precision_train[recall_train >= recall_fixed_plco].min()
+    precision_fixed = precision_train[recall_train >= recall_fixed_plco].max()
     print("Model precision with a fixed recall of 0.78 on train set (PLCO):", precision_fixed)
 
     # ------------------------ Calibration of the model ------------------------
@@ -221,13 +221,13 @@ def main():
     # We find the model precision with a fixed recall of 0.9886055344546935 for NLST
     recall_fixed_nlst = 0.9886055344546935
     precision_test_calibrated, recall_test_calibrated, _ = precision_recall_curve(y_test, y_test_proba_calibrated)
-    precision_fixed = precision_test_calibrated[recall_test_calibrated >= recall_fixed_nlst].min()
+    precision_fixed = precision_test_calibrated[recall_test_calibrated >= recall_fixed_nlst].max()
     print("Model precision with a fixed recall of 0.9886055344546935 on test set (NLST):", precision_fixed)
     # Same for PLCO with a fixed recall of 0.78
     recall_fixed_plco = 0.78
     y_train_proba_calibrated = model_calibrated.predict_proba(x_train)[:, 1]
     precision_train_calibrated, recall_train_calibrated, _ = precision_recall_curve(y_train, y_train_proba_calibrated)
-    precision_fixed = precision_train_calibrated[recall_train_calibrated >= recall_fixed_plco].min()
+    precision_fixed = precision_train_calibrated[recall_train_calibrated >= recall_fixed_plco].max()
     print("Model precision with a fixed recall of 0.78 on train set (PLCO):", precision_fixed)
 
     # Plot the calibration before and after calibration
